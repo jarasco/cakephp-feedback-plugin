@@ -40,11 +40,11 @@ step is to install the Goodies plugin as a submodule:
 Now do the same for the Feedback plugin. If you're using Git, you can run this
 while in your app folder:
 
-	git submodule add git://github.com/lecterror/cakephp-feedback-plugin.git Plugin/Feedback
+	git submodule add git://github.com/pHAlkaline/cakephp-feedback-plugin.git Plugin/Feedback
 	git submodule init
 	git submodule update
 
-Or visit <http://github.com/lecterror/cakephp-feedback-plugin> and download the
+Or visit <http://github.com/pHAlkaline/cakephp-feedback-plugin> and download the
 plugin manually to your `app/Plugin/Feedback/` folder.
 
 Also, don't forget to activate both plugins in your application config (see [Installing a Plugin][]
