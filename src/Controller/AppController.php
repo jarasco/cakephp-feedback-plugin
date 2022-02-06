@@ -10,10 +10,10 @@
         LGPL <http://www.gnu.org/licenses/lgpl.html>
         GPL <http://www.gnu.org/licenses/gpl.html>
  */
+namespace Feedback\Controller;
 
-// App::uses('AppModel', 'Model');
-use Cake\ORM\Table;
+use App\Controller\AppController as BaseController;
 
-class FeedbackAppModel extends Table
+class AppController extends BaseController
 {
 }

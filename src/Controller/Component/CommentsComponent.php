@@ -1,71 +1,79 @@
 <?php
 /**
-	CakePHP Feedback Plugin
+    CakePHP Feedback Plugin
 
-	Copyright (C) 2012-3827 dr. Hannibal Lecter / lecterror
-	<http://lecterror.com/>
+    Copyright (C) 2012-3827 dr. Hannibal Lecter / lecterror
+    <http://lecterror.com/>
 
-	Multi-licensed under:
-		MPL <http://www.mozilla.org/MPL/MPL-1.1.html>
-		LGPL <http://www.gnu.org/licenses/lgpl.html>
-		GPL <http://www.gnu.org/licenses/gpl.html>
-*/
+    Multi-licensed under:
+        MPL <http://www.mozilla.org/MPL/MPL-1.1.html>
+        LGPL <http://www.gnu.org/licenses/lgpl.html>
+        GPL <http://www.gnu.org/licenses/gpl.html>
+ */
 
-App::uses('Component', 'Controller');
+namespace Feedback\Controller\Component;
+
+use Cake\Controller\Component;
+
+// App::uses('Component', 'Controller');
 
 /**
  * @property CookieComponent $Cookie
  */
 class CommentsComponent extends Component
 {
-	public $components = array('Cookie');
+    public $components = array('Cookie');
 
-	private $_defaultSettings = array('on' => 'view');
+    private $_defaultSettings = array('on' => 'view');
 
-	public function __construct(ComponentCollection $collection, $settings = array())
-	{
-		parent::__construct($collection, $settings);
-		$this->settings = array_merge($this->_defaultSettings, $settings);
-	}
+    // public function __construct(ComponentCollection $collection, $settings = [])
+    public function __construct($collection, $settings = [])
+    {
+        parent::__construct($collection, $settings);
+        $this->settings = array_merge($this->_defaultSettings, $settings);
+    }
 
-	public function beforeRender(Controller $controller)
-	{
-		if (!in_array($controller->request->params['action'], (array)$this->settings['on']))
-		{
-			return;
-		}
-		
-		if (!in_array('Feedback.Comments', $controller->helpers))
-		{
-			$controller->helpers[] = 'Feedback.Comments';
-		}
+    public function beforeRender($controller)
+    {
+        // if (!in_array($controller->_subject->components['Feedback.Comments']['on'], (array)$this->settings['on']))
+        // {
+            // debug($controller->_subject->components['Feedback.Comments']['on']);
+            //  debug((array)$this->settings['on']);
+            // return;
+        // }
 
-		$cookie_data = $this->Cookie->read('Feedback.CommentInfo');
+        if (!in_array('Feedback.Comments', $controller->_subject->helpers))
+        {
+            // $controller->helpers[] = 'Feedback.Comments';
+        }
 
-		if (!empty($cookie_data))
-		{
-			foreach ($cookie_data as $field => $value)
-			{
-				$controller->request->data['Comment'][$field] = $value;
-			}
-		}
-	}
+        $cookie_data = $this->Cookie->read('Feedback.CommentInfo');
 
-	public function saveInfo()
-	{
-		$data = $this->_Collection->getController()->request->data;
+        if (!empty($cookie_data))
+        {
+            foreach ($cookie_data as $field => $value)
+            {
+                // $controller->request->data[$field] = $value;
+                $this->request = $this->request->withData($field, $value);
+            }
+        }
+    }
 
-		$info = array();
-		$info['author_name'] = $data['Comment']['author_name'];
-		$info['author_email'] = $data['Comment']['author_email'];
-		$info['author_website'] = $data['Comment']['author_website'];
-		$info['remember_info'] = $data['Comment']['remember_info'];
+    public function saveInfo()
+    {
+        $data = $this->request->getData();
+// debug($data);
+        $info = [];
+        $info['author_name'] = $data['author_name'];
+        $info['author_email'] = $data['author_email'];
+        $info['author_website'] = $data['author_website'];
+        $info['remember_info'] = $data['remember_info'];
 
-		$this->Cookie->write('Feedback.CommentInfo', $info, false, '+1 year');
-	}
+        $this->Cookie->write('Feedback.CommentInfo', $info, false, '+1 year');
+    }
 
-	public function forgetInfo()
-	{
-		$this->Cookie->delete('Feedback.CommentInfo');
-	}
+    public function forgetInfo()
+    {
+        $this->Cookie->delete('Feedback.CommentInfo');
+    }
 }

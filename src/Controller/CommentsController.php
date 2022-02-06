@@ -1,88 +1,101 @@
 <?php
 /**
-	CakePHP Feedback Plugin
+    CakePHP Feedback Plugin
 
-	Copyright (C) 2012-3827 dr. Hannibal Lecter / lecterror
-	<http://lecterror.com/>
+    Copyright (C) 2012-3827 dr. Hannibal Lecter / lecterror
+    <http://lecterror.com/>
 
-	Multi-licensed under:
-		MPL <http://www.mozilla.org/MPL/MPL-1.1.html>
-		LGPL <http://www.gnu.org/licenses/lgpl.html>
-		GPL <http://www.gnu.org/licenses/gpl.html>
-*/
+    Multi-licensed under:
+        MPL <http://www.mozilla.org/MPL/MPL-1.1.html>
+        LGPL <http://www.gnu.org/licenses/lgpl.html>
+        GPL <http://www.gnu.org/licenses/gpl.html>
+ */
 
-App::uses('FeedbackAppController', 'Feedback.Controller');
+namespace Feedback\Controller;
+
+use Cake\ORM\TableRegistry;
+use Feedback\Controller\AppController;
+use Feedback\Model\Table\CommentsTable;
+
 /**
  * Comments Controller
  *
  * @property CommentsComponent $Comments
  * @property AuthComponent $Auth
  */
-class CommentsController extends FeedbackAppController
+// class CommentsController extends FeedbackAppController
+class CommentsController extends AppController
 {
-	public $components = array('Feedback.Comments');
+    public $components = ['Feedback.Comments'];
 
-	public function add($foreign_model = null, $foreign_id = null)
-	{
-		if (empty($foreign_model) ||
-			empty($foreign_id) ||
-			!$this->request->is('post')
-			)
-		{
-			return $this->redirect('/');
-		}
+    public function add($foreign_model = null, $foreign_id = null)
+    {
+        if (empty($foreign_model) ||
+            empty($foreign_id) ||
+            !$this->request->is('post')
+            )
+        {
+            return $this->redirect('/');
+        }
 
-		App::uses($foreign_model, 'Model');
-		$Model = ClassRegistry::init($foreign_model);
+        // App::uses($foreign_model, 'Model');
+        // $Model = ClassRegistry::init($foreign_model);
+        $Model = TableRegistry::getTableLocator()->get($foreign_model);
 
-		if (!($Model instanceof Model))
-		{
-			return $this->redirect('/');
-		}
+        if (!($Model instanceof \App\Model\AppModel))
+        {
+            return $this->redirect('/');
+        }
+        // debug($this->request->getData());
+// debug($Model);
+// debug($foreign_id);
+        if ($Model->exists([$Model->getPrimaryKey() => $foreign_id]) == false)
+        {
+            return $this->redirect('/');
+        }
 
-		if ($Model->hasAny(array($Model->primaryKey => $foreign_id)) == false)
-		{
-			return $this->redirect('/');
-		}
+        if (!isset($this->request->data['foreign_model']) ||
+            !isset($this->request->data['foreign_id']) ||
+            $this->request->data['foreign_model'] != $foreign_model ||
+            $this->request->data['foreign_id'] != $foreign_id)
+        {
+            return $this->redirect('/');
+        }
 
-		if (!isset($this->request->data['Comment']['foreign_model']) ||
-			!isset($this->request->data['Comment']['foreign_id']) ||
-			$this->request->data['Comment']['foreign_model'] != $foreign_model ||
-			$this->request->data['Comment']['foreign_id'] != $foreign_id)
-		{
-			return $this->redirect('/');
-		}
+        $user_id = null;
 
-		$user_id = null;
+        if ($this->Authentication->getIdentity()->getIdentifier() !== null)
+        {
+            $user_id = $this->Authentication->getIdentity()->getIdentifier();
+        }
 
-		if (isset($this->Auth))
-		{
-			$user_id = $this->Auth->user('id');
-		}
+        $this->request->data['foreign_model'] = $Model->getAlias();
+        $this->request->data['foreign_id'] = $foreign_id;
+        $this->request->data['user_id'] = $user_id;
+        $this->request->data['author_ip'] = $this->request->clientIp();
 
-		$this->request->data['Comment']['foreign_model'] = $Model->name;
-		$this->request->data['Comment']['foreign_id'] = $foreign_id;
-		$this->request->data['Comment']['user_id'] = $user_id;
-		$this->request->data['Comment']['author_ip'] = $this->request->clientIp();
+        $Comments = TableRegistry::getTableLocator()->get('Feedback.Comments');
+        $comment = $Comments->newEntity($this->request->getData());
+//         debug($comment);
+// debug($Comments->save($comment));
+        if (!$Comments->save($comment))
+        {
+            // $this->set('validation_errors', $Comments->validationErrors);
+            $this->set('validation_errors', $comment->getErrors());
 
-		$this->Comment->create();
+            return;
+        }
 
-		if (!$this->Comment->save($this->request->data))
-		{
-			$this->set('validation_errors', $this->Comment->validationErrors);
-			return;
-		}
+        if ($this->request->data['remember_info'])
+        {
+            $this->Comments->saveInfo();
+        }
+        else
+        {
+            $this->Comments->forgetInfo();
+        }
 
-		if ($this->request->data['Comment']['remember_info'])
-		{
-			$this->Comments->saveInfo();
-		}
-		else
-		{
-			$this->Comments->forgetInfo();
-		}
-
-        $this->redirect($this->request->referer() . '#comment-' . $this->Comment->id);
+        $this->redirect($this->request->referer() . '#comment-' . $comment->id);
     }
 
     /**
@@ -98,17 +111,18 @@ class CommentsController extends FeedbackAppController
         if (!$this->request->is('post')) {
             throw new MethodNotAllowedException();
         }
-        $this->Comment->id = $id;
-        if (!$this->Comment->exists()) {
-            throw new NotFoundException(__d('feedback','Invalid request.'));
+        // $this->Comment->id = $id;
+        $Comments = TableRegistry::getTableLocator()->get('Feedback.Comments');
+        $comment = $Comments->get($id);
+        if (empty($comment)) {
+            throw new NotFoundException(__d('feedback', 'Invalid request.'));
         }
-        if ($this->Comment->delete()) {
-            $this->Flash->success(__d('feedback','Record deleted.'));
-            $this->redirect($redirect );
+        if ($Comments->delete($comment)) {
+            $this->Flash->success(__d('feedback', 'Record deleted.'));
+            return $this->redirect($redirect);
         }
-        $this->Flash->error(__d('feedback','Failed, record was not deleted.'));
+        $this->Flash->error(__d('feedback', 'Failed, record was not deleted.'));
 
         $this->redirect($redirect);
     }
-
 }
